@@ -1032,9 +1032,9 @@ export default function Home() {
 
             <button
               onClick={() => {
-                setMenuOpen(true);
-                setSelectedCategory("");
-              }}
+  setMenuOpen(!menuOpen);
+  setSelectedCategory("");
+}}
               className="flex flex-col items-center leading-tight"
             >
               <span className="text-2xl sm:text-3xl">☰</span>
