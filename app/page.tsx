@@ -1016,7 +1016,7 @@ export default function Home() {
       <header className="bg-blue-600 text-white shadow-sm">
         <div className="flex h-16 items-center justify-between px-3 sm:h-20 sm:px-8">
           <button onClick={resetHome} className="shrink-0" aria-label="トップへ戻る">
-            <img src="/logo.png" alt="ことぺた" className="h-14 w-auto sm:h-40" />
+            <img src="/logo.png" alt="ことぺた" className="h-30 w-auto sm:h-40" />
           </button>
 
           <nav className="flex shrink-0 gap-4 text-center text-[11px] font-bold sm:gap-10 sm:text-sm">
