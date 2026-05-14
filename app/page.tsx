@@ -820,20 +820,20 @@ export default function Home() {
   const [searched, setSearched] = useState(false);
   const [selected, setSelected] = useState<(typeof phrases)[0] | null>(null);
   const [copied, setCopied] = useState(false);
-
   const [menuOpen, setMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-  const searchRef = useRef<HTMLDivElement>(null);
-  const [showPremium, setShowPremium] = useState(false);
-
   const [selectedCategory, setSelectedCategory] = useState("");
   const [favorites, setFavorites] = useState<string[]>([]);
   const [showFavorites, setShowFavorites] = useState(false);
+  const [showPremium, setShowPremium] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
   const [searchFocused, setSearchFocused] = useState(false);
   const [prevView, setPrevView] = useState<"home" | "category" | "search">("home");
+  const [storageReady, setStorageReady] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
 
-  const feedbackFormUrl = "https://docs.google.com/forms/d/e/1FAIpQLScbF2SA6P6Gd_p1yMXy0xtinmC8LrwdN5Rvk9IOJ4z-85joBA/viewform?usp=header";
+  const feedbackFormUrl =
+    "https://docs.google.com/forms/d/e/1FAIpQLScbF2SA6P6Gd_p1yMXy0xtinmC8LrwdN5Rvk9IOJ4z-85joBA/viewform?usp=header";
 
   const categoryMap: Record<string, string[]> = {
     QRコード: ["QR"],
@@ -846,16 +846,18 @@ export default function Home() {
     携帯電話: ["携帯電話", "スマホ", "通話", "充電"],
   };
 
+  const categories = Object.keys(categoryMap);
+
   const categoryCounts: Record<string, number> = Object.fromEntries(
-  Object.keys(categoryMap).map((cat) => [
-    cat,
-    phrases.filter((item) =>
-      categoryMap[cat].some((keyword) =>
-        [item.jp, ...item.tags].some((word) => word.includes(keyword))
-      )
-    ).length,
-  ])
-);
+    categories.map((cat) => [
+      cat,
+      phrases.filter((item) =>
+        categoryMap[cat].some((keyword) =>
+          [item.jp, ...item.tags].some((word) => word.includes(keyword))
+        )
+      ).length,
+    ])
+  );
 
   useEffect(() => {
     const savedFavorites = localStorage.getItem("favorites");
@@ -863,15 +865,19 @@ export default function Home() {
 
     const savedHistory = localStorage.getItem("history");
     if (savedHistory) setHistory(JSON.parse(savedHistory));
+
+    setStorageReady(true);
   }, []);
 
   useEffect(() => {
+    if (!storageReady) return;
     localStorage.setItem("favorites", JSON.stringify(favorites));
-  }, [favorites]);
+  }, [favorites, storageReady]);
 
   useEffect(() => {
+    if (!storageReady) return;
     localStorage.setItem("history", JSON.stringify(history));
-  }, [history]);
+  }, [history, storageReady]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -884,33 +890,25 @@ export default function Home() {
     return () => document.removeEventListener("click", handleClickOutside);
   }, []);
 
-  const results =
+  const categoryResults =
     selectedCategory && selectedCategory !== "一覧"
       ? phrases.filter((item) =>
           categoryMap[selectedCategory]?.some((keyword) =>
             [item.jp, ...item.tags].some((word) => word.includes(keyword))
           )
         )
-      : query.trim() === ""
-        ? []
-        : phrases.filter((item) =>
-            [item.jp, ...item.tags].some((word) =>
-              word.toLowerCase().includes(query.trim().toLowerCase())
-            )
-          );
+      : [];
 
-  const handleSearch = () => {
-    setPrevView("search");
-    setShowFavorites(false);
-    setSearched(true);
-    setSelected(results.length === 1 ? results[0] : null);
-  };
+  const searchResults =
+    query.trim() === ""
+      ? []
+      : phrases.filter((item) =>
+          [item.jp, ...item.tags].some((word) =>
+            word.toLowerCase().includes(query.trim().toLowerCase())
+          )
+        );
 
-  const copyText = async (text: string) => {
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
+  const results = selectedCategory && selectedCategory !== "一覧" ? categoryResults : searchResults;
 
   const showPhrase = selected || (results.length === 1 ? results[0] : null);
 
@@ -926,11 +924,35 @@ export default function Home() {
     });
   }, [showPhrase]);
 
+  const handleSearch = () => {
+    const trimmed = query.trim();
+    const matched =
+      trimmed === ""
+        ? []
+        : phrases.filter((item) =>
+            [item.jp, ...item.tags].some((word) =>
+              word.toLowerCase().includes(trimmed.toLowerCase())
+            )
+          );
+
+    setPrevView("search");
+    setSelectedCategory("");
+    setShowFavorites(false);
+    setShowPremium(false);
+    setSearched(true);
+    setSelected(matched.length === 1 ? matched[0] : null);
+    setSearchFocused(false);
+  };
+
+  const copyText = async (text: string) => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
   const toggleFavorite = (jp: string) => {
     setFavorites((prev) =>
-      prev.includes(jp)
-        ? prev.filter((item) => item !== jp)
-        : [...prev, jp]
+      prev.includes(jp) ? prev.filter((item) => item !== jp) : [...prev, jp]
     );
   };
 
@@ -940,8 +962,29 @@ export default function Home() {
     setSelected(null);
     setSelectedCategory("");
     setShowFavorites(false);
+    setShowPremium(false);
     setSearchFocused(false);
     setPrevView("home");
+  };
+
+  const openFavorites = () => {
+    setShowFavorites(true);
+    setShowPremium(false);
+    setMenuOpen(false);
+    setSelectedCategory("");
+    setSelected(null);
+    setSearched(false);
+    setSearchFocused(false);
+  };
+
+  const openPremium = () => {
+    setShowPremium(true);
+    setShowFavorites(false);
+    setMenuOpen(false);
+    setSelectedCategory("");
+    setSelected(null);
+    setSearched(false);
+    setSearchFocused(false);
   };
 
   const languages = showPhrase
@@ -971,38 +1014,21 @@ export default function Home() {
       }`}
     >
       <header className="bg-blue-600 text-white shadow-sm">
-        <div className="flex h-20 items-center justify-between px-8">
-          <button onClick={resetHome}>
-            <img src="/logo.png" alt="ことぺた" className="h-40 w-auto" />
+        <div className="flex h-16 items-center justify-between px-3 sm:h-20 sm:px-8">
+          <button onClick={resetHome} className="shrink-0" aria-label="トップへ戻る">
+            <img src="/logo.png" alt="ことぺた" className="h-14 w-auto sm:h-40" />
           </button>
 
-          <nav className="flex gap-10 text-center text-sm font-bold">
-            <button
-              onClick={() => {
-                setShowFavorites(true);
-                setMenuOpen(false);
-                setSelectedCategory("");
-                setSelected(null);
-                setSearched(false);
-              }}
-              className="flex flex-col items-center leading-tight"
-            >
-              <span className="text-3xl">♡</span>
-              <span>お気に入り</span>
+          <nav className="flex shrink-0 gap-4 text-center text-[11px] font-bold sm:gap-10 sm:text-sm">
+            <button onClick={openFavorites} className="flex flex-col items-center leading-tight">
+              <span className="text-2xl sm:text-3xl">♡</span>
+              <span className="hidden sm:block">お気に入り</span>
             </button>
-<button
-  onClick={() => {
-    setShowPremium(true);
-    setShowFavorites(false);
-    setSelected(null);
-    setSearched(false);
-    setMenuOpen(false);
-  }}
-  className="flex flex-col items-center leading-tight"
->
-  <span className="text-3xl">👑</span>
-  <span>プレミアム</span>
-</button>
+
+            <button onClick={openPremium} className="flex flex-col items-center leading-tight">
+              <span className="text-2xl sm:text-3xl">👑</span>
+              <span className="hidden sm:block">プレミアム</span>
+            </button>
 
             <button
               onClick={() => {
@@ -1011,20 +1037,17 @@ export default function Home() {
               }}
               className="flex flex-col items-center leading-tight"
             >
-              <span className="text-3xl">☰</span>
-              <span>メニュー</span>
+              <span className="text-2xl sm:text-3xl">☰</span>
+              <span className="hidden sm:block">メニュー</span>
             </button>
           </nav>
         </div>
 
         {menuOpen && (
           <div className="fixed inset-0 z-50 flex">
-            <div
-              className="flex-1 bg-black/10"
-              onClick={() => setMenuOpen(false)}
-            />
+            <div className="flex-1 bg-black/10" onClick={() => setMenuOpen(false)} />
 
-            <div className="h-full w-80 bg-blue-600 text-white shadow-2xl">
+            <div className="h-full w-[82vw] max-w-xs bg-blue-600 text-white shadow-2xl sm:w-80">
               <div className="flex items-center justify-between border-b border-white/20 px-6 py-5">
                 <span className="text-lg font-bold">メニュー</span>
                 <button onClick={() => setMenuOpen(false)} className="text-2xl">
@@ -1043,13 +1066,7 @@ export default function Home() {
                   </button>
 
                   <button
-                    onClick={() => {
-                      setShowFavorites(true);
-                      setMenuOpen(false);
-                      setSelectedCategory("");
-                      setSelected(null);
-                      setSearched(false);
-                    }}
+                    onClick={openFavorites}
                     className="flex w-full items-center justify-between border-b border-white/20 px-6 py-6 text-left text-lg font-bold"
                   >
                     <span>♡ お気に入り</span>
@@ -1064,7 +1081,10 @@ export default function Home() {
                     <span>{darkMode ? "ON" : "OFF"}</span>
                   </button>
 
-                  <button className="flex w-full items-center justify-between border-b border-white/20 px-6 py-6 text-left text-lg font-bold">
+                  <button
+                    onClick={openPremium}
+                    className="flex w-full items-center justify-between border-b border-white/20 px-6 py-6 text-left text-lg font-bold"
+                  >
                     <span>👑 プレミアム</span>
                     <span>〉</span>
                   </button>
@@ -1079,19 +1099,12 @@ export default function Home() {
                 </>
               ) : (
                 <>
-                  {[
-                    "QRコード",
-                    "禁止事項",
-                    "温泉",
-                    "支払い",
-                    "タバコ",
-                    "注文",
-                    "トイレ",
-                    "携帯電話",
-                  ].map((cat) => (
+                  {categories.map((cat) => (
                     <button
                       key={cat}
+                      disabled={categoryCounts[cat] === 0}
                       onClick={() => {
+                        if (categoryCounts[cat] === 0) return;
                         setPrevView("category");
                         setSelectedCategory(cat);
                         setSearched(true);
@@ -1099,18 +1112,13 @@ export default function Home() {
                         setQuery("");
                         setMenuOpen(false);
                         setShowFavorites(false);
+                        setShowPremium(false);
                       }}
-                      className="block w-full border-b border-white/20 px-6 py-5 text-left text-lg font-bold"
+                      className={`block w-full border-b border-white/20 px-6 py-5 text-left text-lg font-bold ${
+                        categoryCounts[cat] === 0 ? "cursor-not-allowed opacity-40" : ""
+                      }`}
                     >
-                    <span
-  className={
-    categoryCounts[cat] === 0
-      ? "opacity-40"
-      : ""
-  }
->
-  {cat}（{categoryCounts[cat]}）
-</span>
+                      {cat}（{categoryCounts[cat]}）
                     </button>
                   ))}
                 </>
@@ -1120,9 +1128,9 @@ export default function Home() {
         )}
       </header>
 
-      <section className="mx-auto max-w-5xl px-6 pt-16 text-center">
+      <section className="mx-auto max-w-5xl px-4 pt-12 text-center sm:px-6 sm:pt-16">
         <h1
-          className={`text-4xl font-black tracking-tight md:text-5xl ${
+          className={`text-3xl font-black leading-tight tracking-tight sm:text-4xl md:text-5xl ${
             darkMode ? "text-white" : "text-slate-900"
           }`}
         >
@@ -1130,18 +1138,18 @@ export default function Home() {
         </h1>
 
         <p
-          className={`mt-4 text-lg font-semibold ${
+          className={`mt-4 text-base font-semibold leading-relaxed sm:text-lg ${
             darkMode ? "text-slate-300" : "text-slate-600"
           }`}
         >
           日本語のキーワードから、外国語を探せます。
         </p>
 
-        {!showFavorites && (
+        {!showFavorites && !showPremium && (
           <>
             <div ref={searchRef} className="relative mx-auto mt-10 max-w-4xl">
-              <div className="flex items-center gap-4 rounded-full border-2 border-blue-600 bg-white p-3 shadow-sm">
-                <span className="pl-5 text-3xl">⌕</span>
+              <div className="flex items-center gap-2 rounded-full border-2 border-blue-600 bg-white p-2 shadow-sm sm:gap-4 sm:p-3">
+                <span className="pl-3 text-2xl sm:pl-5 sm:text-3xl">⌕</span>
 
                 <input
                   value={query}
@@ -1150,17 +1158,18 @@ export default function Home() {
                     setQuery(e.target.value);
                     setSearched(false);
                     setSelected(null);
+                    setSelectedCategory("");
                   }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleSearch();
                   }}
-                  className="flex-1 bg-transparent text-xl outline-none"
-                  placeholder="例）タバコ、トイレ、現金のみ など"
+                  className="min-w-0 flex-1 bg-transparent text-base outline-none sm:text-xl"
+                  placeholder="例）タバコ、トイレ、現金のみ"
                 />
 
                 <button
                   onClick={handleSearch}
-                  className="rounded-full bg-blue-600 px-9 py-4 text-lg font-bold text-white"
+                  className="shrink-0 rounded-full bg-blue-600 px-5 py-3 text-sm font-bold text-white sm:px-9 sm:py-4 sm:text-lg"
                 >
                   検索
                 </button>
@@ -1169,10 +1178,7 @@ export default function Home() {
               {searchFocused && history.length > 0 && query === "" && (
                 <div className="absolute left-0 right-0 top-full z-40 mt-3 rounded-3xl bg-white p-4 text-left shadow-xl">
                   <div className="mb-3 flex items-center justify-between">
-                    <p className="text-sm font-bold text-slate-500">
-                      最近使った
-                    </p>
-
+                    <p className="text-sm font-bold text-slate-500">最近使った</p>
                     <button
                       onClick={() => setHistory([])}
                       className="text-xs font-bold text-blue-600 hover:underline"
@@ -1224,20 +1230,21 @@ export default function Home() {
                 <button
                   key={word.label}
                   onClick={() => {
-                    setPrevView("search");
-                    setQuery(word.label);
-                    setSearched(true);
-                    setShowFavorites(false);
-
                     const matched = phrases.filter((item) =>
                       [item.jp, ...item.tags].some((tag) =>
                         tag.toLowerCase().includes(word.label.toLowerCase())
                       )
                     );
 
+                    setPrevView("search");
+                    setSelectedCategory("");
+                    setQuery(word.label);
+                    setSearched(true);
+                    setShowFavorites(false);
+                    setShowPremium(false);
                     setSelected(matched.length === 1 ? matched[0] : null);
                   }}
-                  className="flex items-center gap-2 rounded-full border border-blue-100 bg-white px-5 py-2 font-bold text-slate-900 shadow-sm"
+                  className="flex items-center gap-2 rounded-full border border-blue-100 bg-white px-4 py-2 text-sm font-bold text-slate-900 shadow-sm sm:px-5 sm:text-base"
                 >
                   <span className="text-xl">{word.icon}</span>
                   <span>{word.label}</span>
@@ -1248,113 +1255,101 @@ export default function Home() {
         )}
       </section>
 
-      <section className="mx-auto mt-14 max-w-4xl px-6">
-         {showPremium && (
-    <div className="rounded-3xl bg-blue-50 border border-blue-100 p-8 shadow-sm text-center">
+      <section className="mx-auto mt-14 max-w-4xl px-4 sm:px-6">
+        {showPremium && (
+          <div className="rounded-3xl border border-blue-100 bg-blue-50 p-6 text-center shadow-sm sm:p-8">
+            <h2 className="text-3xl font-black text-slate-900">👑 プレミアム</h2>
 
-      <h2 className="text-3xl font-black text-slate-900">👑 プレミアム</h2>
+            <p className="mt-3 font-semibold text-slate-600">今後追加予定の機能です</p>
 
-      <p className="mt-3 text-slate-600 font-semibold">
-        今後追加予定の機能です
-      </p>
-<div className="mt-8 grid grid-cols-3 gap-5 text-left">
-  <div className="rounded-2xl bg-white p-5 shadow-sm">
-    <p className="text-xl">♡</p>
-    <p className="mt-2 font-black text-slate-900">お気に入り無制限保存</p>
-  </div>
+            <div className="mt-8 grid gap-4 text-left sm:grid-cols-3 sm:gap-5">
+              <div className="rounded-2xl bg-white p-5 shadow-sm">
+                <p className="text-xl">♡</p>
+                <p className="mt-2 font-black text-slate-900">お気に入り無制限保存</p>
+              </div>
 
-  <div className="rounded-2xl bg-white p-5 shadow-sm">
-    <p className="text-xl">📄</p>
-    <p className="mt-2 font-black text-slate-900">PDFでダウンロード</p>
-  </div>
+              <div className="rounded-2xl bg-white p-5 shadow-sm">
+                <p className="text-xl">📄</p>
+                <p className="mt-2 font-black text-slate-900">PDFでダウンロード</p>
+              </div>
 
-  <div className="rounded-2xl bg-white p-5 shadow-sm">
-    <p className="text-xl">🚫</p>
-    <p className="mt-2 font-black text-slate-900">広告なし</p>
-  </div>
-</div>
-
-      <button
-        onClick={() => setShowPremium(false)}
-       className="mt-6 rounded-full bg-blue-600 px-6 py-2 font-bold text-white hover:bg-blue-700"
-      >
-        ← 戻る
-      </button>
-
-    </div>
-  )}
-
- {showFavorites && (
-  <div className="rounded-3xl bg-blue-600 p-7 text-white shadow-sm">
-    <div className="mb-5 flex items-center justify-between">
-      <h2 className="text-2xl font-black text-white">
-        ♡ お気に入り
-      </h2>
-
-      <button
-        onClick={() => setShowFavorites(false)}
-        className="rounded-full bg-white px-4 py-2 text-sm font-bold text-blue-700 shadow-sm transition hover:bg-blue-50"
-      >
-        ← 戻る
-      </button>
-    </div>
-
-    {favorites.length === 0 ? (
-      <p className="mt-5 text-blue-100">
-        まだお気に入りはありません。
-      </p>
-    ) : (
-      <div className="mt-5 space-y-3">
-        {favorites.map((fav) => {
-          const item = phrases.find((p) => p.jp === fav);
-          if (!item) return null;
-
-          return (
-            <div
-              key={item.jp}
-              className="flex w-full items-center justify-between rounded-2xl bg-blue-50 px-5 py-4 font-bold text-blue-700 transition hover:bg-blue-100"
-            >
-              <button
-                onClick={() => {
-                  setSelected(item);
-                  setShowFavorites(false);
-                  setSearched(true);
-                  setPrevView("search");
-                }}
-                className="flex flex-1 items-center justify-between text-left"
-              >
-                <span>
-                  {item.icon} {item.jp}
-                </span>
-
-                <span>〉</span>
-              </button>
-
-              <span
-  onClick={(e) => {
-    e.stopPropagation();
-    setFavorites((prev) =>
-      prev.filter((f) => f !== item.jp)
-    );
-  }}
-  className="ml-4 cursor-pointer rounded-full px-2 text-sm text-red-400 hover:text-red-600"
-  role="button"
-  aria-label={`${item.jp}をお気に入りから削除`}
->
-  ×
-</span>
+              <div className="rounded-2xl bg-white p-5 shadow-sm">
+                <p className="text-xl">🚫</p>
+                <p className="mt-2 font-black text-slate-900">広告なし</p>
+              </div>
             </div>
-          );
-        })}
-      </div>
-    )}
-  </div>
-)}
 
-        {searched && results.length > 1 && !selected && !showFavorites && (
+            <button
+              onClick={() => setShowPremium(false)}
+              className="mt-6 rounded-full bg-blue-600 px-6 py-2 font-bold text-white hover:bg-blue-700"
+            >
+              ← 戻る
+            </button>
+          </div>
+        )}
+
+        {showFavorites && (
+          <div className="rounded-3xl bg-blue-600 p-6 text-white shadow-sm sm:p-7">
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <h2 className="text-2xl font-black text-white">♡ お気に入り</h2>
+
+              <button
+                onClick={() => setShowFavorites(false)}
+                className="shrink-0 rounded-full bg-white px-4 py-2 text-sm font-bold text-blue-700 shadow-sm transition hover:bg-blue-50"
+              >
+                ← 戻る
+              </button>
+            </div>
+
+            {favorites.length === 0 ? (
+              <p className="mt-5 text-blue-100">まだお気に入りはありません。</p>
+            ) : (
+              <div className="mt-5 space-y-3">
+                {favorites.map((fav) => {
+                  const item = phrases.find((p) => p.jp === fav);
+                  if (!item) return null;
+
+                  return (
+                    <div
+                      key={item.jp}
+                      className="flex w-full items-center justify-between gap-3 rounded-2xl bg-blue-50 px-5 py-4 font-bold text-blue-700 transition hover:bg-blue-100"
+                    >
+                      <button
+                        onClick={() => {
+                          setSelected(item);
+                          setShowFavorites(false);
+                          setSearched(true);
+                          setPrevView("search");
+                        }}
+                        className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left"
+                      >
+                        <span className="truncate">
+                          {item.icon} {item.jp}
+                        </span>
+                        <span>〉</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setFavorites((prev) => prev.filter((f) => f !== item.jp));
+                        }}
+                        className="shrink-0 rounded-full px-2 text-sm text-red-400 hover:text-red-600"
+                        aria-label={`${item.jp}をお気に入りから削除`}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {searched && results.length > 1 && !selected && !showFavorites && !showPremium && (
           <>
             {selectedCategory && selectedCategory !== "一覧" && (
-              <div className="mb-6 flex items-center justify-between">
+              <div className="mb-6 flex items-center justify-between gap-4">
                 <p className="text-left text-xl font-black text-blue-600">
                   カテゴリー：{selectedCategory}
                 </p>
@@ -1365,17 +1360,15 @@ export default function Home() {
                     setSearched(false);
                     setSelected(null);
                   }}
-                  className="rounded-full border border-blue-200 bg-white px-4 py-2 text-sm font-bold text-blue-700 hover:bg-blue-50"
+                  className="shrink-0 rounded-full border border-blue-200 bg-white px-4 py-2 text-sm font-bold text-blue-700 hover:bg-blue-50"
                 >
                   ← 戻る
                 </button>
               </div>
             )}
 
-            <div className="rounded-3xl bg-white p-7 shadow-sm">
-              <h2 className="text-xl font-black text-slate-800">
-                候補が見つかりました
-              </h2>
+            <div className="rounded-3xl bg-white p-6 shadow-sm sm:p-7">
+              <h2 className="text-xl font-black text-slate-800">候補が見つかりました</h2>
 
               <div className="mt-5 space-y-3">
                 {results.map((item) => (
@@ -1395,19 +1388,17 @@ export default function Home() {
           </>
         )}
 
-        {searched && results.length === 0 && !selected && !showFavorites && (
+        {searched && results.length === 0 && !selected && !showFavorites && !showPremium && (
           <div className="rounded-3xl bg-white p-10 text-center shadow-sm">
-            <p className="text-2xl font-black text-slate-800">
-              この言葉は、まだ準備中です。
-            </p>
+            <p className="text-2xl font-black text-slate-800">この言葉は、まだ準備中です。</p>
             <p className="mt-3 font-semibold text-slate-500">
-              ことぺたは少しずつ言葉を増やしています。
+              例：トイレ・現金・禁煙 などで検索してみてください。
             </p>
           </div>
         )}
 
-        {searched && showPhrase && !showFavorites && (
-          <div className="rounded-3xl bg-white p-8 shadow-sm">
+        {searched && showPhrase && !showFavorites && !showPremium && (
+          <div className="rounded-3xl bg-white p-6 shadow-sm sm:p-8">
             <button
               onClick={() => {
                 setSelected(null);
@@ -1427,35 +1418,33 @@ export default function Home() {
 
             <div className="text-center">
               <p className="text-5xl">{showPhrase.icon}</p>
-              <h2 className="mt-3 text-4xl font-black">{showPhrase.jp}</h2>
+              <h2 className="mt-3 text-3xl font-black sm:text-4xl">{showPhrase.jp}</h2>
             </div>
 
             <div className="mt-8 space-y-4">
               {languages.map((lang) => (
                 <div
                   key={lang.name}
-                  className="flex items-center gap-4 rounded-2xl bg-blue-50 px-6 py-5"
+                  className="flex items-center gap-4 rounded-2xl bg-blue-50 px-5 py-5 sm:px-6"
                 >
-                  <div className="flex-1">
+                  <div className="min-w-0 flex-1">
                     <p className="flex items-center gap-3 text-base font-bold text-blue-700">
                       <img
                         src={lang.flag}
                         alt={lang.name}
                         className={`h-7 w-7 rounded-full object-cover shadow-sm ${
-                          lang.name === "中文（简体）"
-                            ? "object-left"
-                            : "object-center"
+                          lang.name === "中文（简体）" ? "object-left" : "object-center"
                         }`}
                       />
                       <span>{lang.name}</span>
                     </p>
 
-                    <p className="mt-2 text-2xl font-black">{lang.text}</p>
+                    <p className="mt-2 break-words text-xl font-black sm:text-2xl">{lang.text}</p>
                   </div>
 
                   <button
                     onClick={() => copyText(lang.text)}
-                    className="rounded-full p-2 transition hover:bg-blue-100"
+                    className="shrink-0 rounded-full p-2 transition hover:bg-blue-100"
                     aria-label={`${lang.name}をコピー`}
                   >
                     <CopyIcon />
@@ -1473,44 +1462,36 @@ export default function Home() {
               }`}
             >
               <span className="text-2xl">♡</span>
-              <span>
-                {favorites.includes(showPhrase.jp)
-                  ? "お気に入り済み"
-                  : "お気に入りに保存"}
-              </span>
+              <span>{favorites.includes(showPhrase.jp) ? "お気に入り済み" : "お気に入りに保存"}</span>
             </button>
           </div>
         )}
       </section>
 
-      <section className="mx-auto mt-24 max-w-5xl px-6 pb-12">
-        <div className="rounded-3xl border border-blue-100 bg-blue-50 px-8 py-7 shadow-sm">
-          <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
-            <div className="text-left">
-              <p className="flex items-center gap-2 text-xl font-black text-blue-700">
-                <span className="text-2xl">👑</span>
-                <span>プレミアム会員でもっと便利に</span>
-              </p>
-              <p className="mt-2 text-sm font-medium text-slate-600">
-                PDF保存・お気に入り保存・広告非表示など、さらに快適に使えます。
-              </p>
-            </div>
+      {!showFavorites && !showPremium && (
+        <section className="mx-auto mt-20 max-w-5xl px-4 pb-12 sm:mt-24 sm:px-6">
+          <div className="rounded-3xl border border-blue-100 bg-blue-50 px-6 py-7 shadow-sm sm:px-8">
+            <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
+              <div className="text-left">
+                <p className="flex items-center gap-2 text-xl font-black text-blue-700">
+                  <span className="text-2xl">👑</span>
+                  <span>プレミアム会員でもっと便利に</span>
+                </p>
+                <p className="mt-2 text-sm font-medium text-slate-600">
+                  PDF保存・お気に入り保存・広告非表示など、さらに快適に使えます。
+                </p>
+              </div>
 
-           <button
-  onClick={() => {
-    setShowPremium(true);
-    setShowFavorites(false);
-    setSelected(null);
-    setSearched(false);
-    setMenuOpen(false);
-  }}
-  className="rounded-full bg-blue-600 px-7 py-3 font-bold text-white shadow-sm hover:bg-blue-700"
->
-  詳しく見る →
-</button>
+              <button
+                onClick={openPremium}
+                className="rounded-full bg-blue-600 px-7 py-3 font-bold text-white shadow-sm hover:bg-blue-700"
+              >
+                詳しく見る →
+              </button>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {copied && (
         <div className="fixed right-6 top-24 z-50 rounded-full bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-lg">
