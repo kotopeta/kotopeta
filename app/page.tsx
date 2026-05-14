@@ -1020,21 +1020,39 @@ export default function Home() {
           </button>
 
           <nav className="flex shrink-0 gap-4 text-center text-[11px] font-bold sm:gap-10 sm:text-sm">
-            <button onClick={openFavorites} className="flex flex-col items-center leading-tight">
+            <button
+  onClick={() => {
+    setShowFavorites((prev) => !prev);
+    setShowPremium(false);
+    setMenuOpen(false);
+    setSelected(null);
+    setSearched(false);
+  }}
+  className="flex flex-col items-center leading-tight"
+>
               <span className="text-2xl sm:text-3xl">♡</span>
               <span className="hidden sm:block">お気に入り</span>
             </button>
 
-            <button onClick={openPremium} className="flex flex-col items-center leading-tight">
+           <button
+  onClick={() => {
+    setShowPremium((prev) => !prev);
+    setShowFavorites(false);
+    setMenuOpen(false);
+    setSelected(null);
+    setSearched(false);
+  }}
+  className="flex flex-col items-center leading-tight"
+>
               <span className="text-2xl sm:text-3xl">👑</span>
               <span className="hidden sm:block">プレミアム</span>
             </button>
 
             <button
               onClick={() => {
-  setMenuOpen(!menuOpen);
-  setSelectedCategory("");
-}}
+                setMenuOpen(true);
+                setSelectedCategory("");
+              }}
               className="flex flex-col items-center leading-tight"
             >
               <span className="text-2xl sm:text-3xl">☰</span>
