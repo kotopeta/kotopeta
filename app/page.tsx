@@ -797,6 +797,62 @@ const phrases = [
   ko: "준비 중입니다",
   zh: "准备中",
 },
+{
+  icon: "📱",
+  jp: "QRコードを見せてください",
+  tags: ["QR", "見せる", "提示"],
+  en: "Please show your QR code",
+  ko: "QR코드를 보여주세요",
+  zh: "请出示二维码",
+},
+{
+  icon: "📷",
+  jp: "QRコードをスキャンしてください",
+  tags: ["QR", "スキャン", "読み取り"],
+  en: "Please scan the QR code",
+  ko: "QR코드를 스캔해 주세요",
+  zh: "请扫描二维码",
+},
+{
+  icon: "💱",
+  jp: "両替はできません",
+  tags: ["両替", "お金", "不可"],
+  en: "We cannot provide currency exchange",
+  ko: "환전은 불가능합니다",
+  zh: "无法兑换货币",
+},
+{
+  icon: "💱",
+  jp: "両替はこちら",
+  tags: ["両替", "案内", "場所"],
+  en: "Currency exchange is here",
+  ko: "환전은 이쪽입니다",
+  zh: "兑换货币在这边",
+},
+{
+  icon: "🚪",
+  jp: "入り口はこちら",
+  tags: ["入口", "入る", "案内"],
+  en: "Entrance is this way",
+  ko: "입구는 이쪽입니다",
+  zh: "入口在这边",
+},
+{
+  icon: "🚶",
+  jp: "出口はこちら",
+  tags: ["出口", "出る", "案内"],
+  en: "Exit is this way",
+  ko: "出口在这边",
+  zh: "出口在这边",
+},
+{
+  icon: "👥",
+  jp: "こちらにお並びください",
+  tags: ["並ぶ", "列", "順番"],
+  en: "Please line up here",
+  ko: "여기에 줄을 서 주세요",
+  zh: "请在这里排队",
+},
 
 ];
 
@@ -1419,16 +1475,18 @@ export default function Home() {
           <div className="rounded-3xl bg-white p-6 shadow-sm sm:p-8">
             <button
               onClick={() => {
-                setSelected(null);
-                setQuery("");
+  setSelected(null);
 
-                if (prevView === "category") {
-                  setSearched(true);
-                } else {
-                  setSearched(false);
-                  setSelectedCategory("");
-                }
-              }}
+  if (results.length > 1) {
+    setSearched(true);
+  } else if (prevView === "category") {
+    setSearched(true);
+  } else {
+    setSearched(false);
+    setSelectedCategory("");
+    setQuery("");
+  }
+}}
               className="sticky top-4 z-40 mb-6 rounded-full border border-blue-200 bg-white px-4 py-2 text-sm font-bold text-blue-700 shadow hover:bg-blue-50"
             >
               ← 戻る
